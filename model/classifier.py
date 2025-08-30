@@ -1,75 +1,49 @@
-import os
-import PyPDF2
-import nltk
-import string
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer, PorterStemmer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
-import joblib
+# single_file_document_topic_classifier.py
 
-# Download NLTK resources (only first run)
-nltk.download("punkt")
-nltk.download("punkt_tab")   # <-- add this line
-nltk.download("stopwords")
-nltk.download("wordnet")
+import requests
+from transformers import pipeline
 
-# Initialize tools
-stop_words = set(stopwords.words("english"))
-lemmatizer = WordNetLemmatizer()
-stemmer = PorterStemmer()
+# Initialize zero-shot classification pipeline
+classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 
-def preprocess_text(text):
-    """Clean and preprocess text with lemmatization and stemming."""
-    text = text.lower()
-    tokens = nltk.word_tokenize(text)
-    tokens = [t for t in tokens if t.isalpha() and t not in stop_words]
-    tokens = [lemmatizer.lemmatize(t) for t in tokens]  # Lemmatization
-    tokens = [stemmer.stem(t) for t in tokens]          # Stemming
-    return " ".join(tokens)
-
-def extract_text_from_pdf(pdf_path):
-    """Extract text from a PDF file."""
-    text = ""
-    with open(pdf_path, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            text += page.extract_text() or ""
-    return text
-
-# Example training data (replace with your dataset)
-train_data = [
-    ("This study investigates deep learning models for image recognition.", "Computer Science"),
-    ("We analyze Shakespeare’s influence on modern English literature.", "Literature"),
-    ("A new algorithm for protein folding using quantum computing.", "Biology"),
-    ("Exploring feminist perspectives in contemporary poetry.", "Literature")
+# Define candidate topics (you can customize this list)
+candidate_topics = [
+    "Technology", "Science", "Business", "Health", "Education",
+    "Sports", "Politics", "Entertainment", "Environment", "Finance"
 ]
 
-X_train = [preprocess_text(text) for text, _ in train_data]
-y_train = [label for _, label in train_data]
+# Input: list of document URLs
+document_links = [
+    "https://www.nejm.org/doi/10.1056/NEJMoa1707447",
+    "https://pubmed.ncbi.nlm.nih.gov/38238616/",
+    # Add up to 10 document links
+]
 
-# Build model pipeline
-model = Pipeline([
-    ("tfidf", TfidfVectorizer()),
-    ("clf", LogisticRegression(max_iter=1000))
-])
+def fetch_document_content(url):
+    """Fetch text content from a document URL."""
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.text
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return None
 
-# Train
-model.fit(X_train, y_train)
+def classify_document(content):
+    """Classify document topic."""
+    result = classifier(content, candidate_topics)
+    # Return the topic with highest score
+    return result['labels'][0]
 
-# Save model for reuse
-joblib.dump(model, "topic_classifier.pkl")
+def main():
+    for idx, link in enumerate(document_links, start=1):
+        print(f"\nProcessing Document {idx}: {link}")
+        content = fetch_document_content(link)
+        if content:
+            topic = classify_document(content)
+            print(f"Document {idx} Topic: {topic}")
+        else:
+            print(f"Document {idx} Topic: Could not fetch content")
 
-# -------------------- #
-# Example: Classify PDF
-# -------------------- #
-pdf_path = "example_paper.pdf"  # your input PDF file
-abstract_text = extract_text_from_pdf(pdf_path)
-clean_text = preprocess_text(abstract_text)
-
-# Load trained model
-model = joblib.load("topic_classifier.pkl")
-predicted_topic = model.predict([clean_text])[0]
-
-print(f"Predicted topic: {predicted_topic}")
+if __name__ == "__main__":
+    main()
