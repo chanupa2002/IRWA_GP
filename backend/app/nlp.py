@@ -25,8 +25,16 @@ def normalize_and_tokenize(text, min_len=2, dedup=True):
         # keep only alphabetic tokens, not punctuation, not whitespace, not stopwords
         if token.is_alpha and not token.is_stop:
             lemma = token.lemma_.lower().strip()
+            
             if len(lemma) >= min_len:
                 terms.append(lemma)
+        elif token.like_num:  # handle numbers separately
+            try:
+                num = int(token.text)
+                if 1900 <= num <= 2100:  # plausible year range
+                    terms.append(token.text)  # keep original number
+            except ValueError:
+                pass
     if dedup:
         # preserve order but unique
         seen = set()

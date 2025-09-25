@@ -3,17 +3,56 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from .nlp import normalize_and_tokenize
 from .semantic import search_semantic_scholar
+from .ranking import rank_papers
+from .summary import summarize_with_gemini,summarize_url
+from pydantic import BaseModel
+from typing import List, Optional
+import smtplib
+from email.mime.text import MIMEText
+import re
+from fastapi import Depends
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi.responses import JSONResponse
+from fastapi.exception_handlers import RequestValidationError
+from fastapi import Request
+
 
 app = FastAPI(title="PaperForge Backend")
 
-# Allow frontend to call backend
+
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to frontend URL
+    allow_origins=["*"],  #
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request, exc):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many requests. Please wait a few minutes before trying again."},
+    )
+
+
+SAFE_QUERY_PATTERN = re.compile(r"^[a-zA-Z0-9\s\-\_\.\?]+$")
+
+def validate_query(query: str = Query(..., min_length=1, max_length=250)):
+    if not SAFE_QUERY_PATTERN.match(query):
+        raise HTTPException(
+            status_code=400,
+            detail="Query contains unsafe characters. Use only letters, numbers, spaces, and -_.?"
+        )
+    return query
 
 
 @app.get("/health")
@@ -22,7 +61,8 @@ def health():
 
 
 @app.get("/search")
-async def search(query: str = Query(..., min_length=1)):
+@limiter.limit("5/3minute") 
+async def search(request: Request,query: str = Depends(validate_query)):
     """
     Search papers using normalized & tokenized query.
     Returns JSON: { papers: [ {title, authors, year, url, pdfUrl, source, abstract} ] }
@@ -49,9 +89,10 @@ async def search(query: str = Query(..., min_length=1)):
     # 3️⃣ Fetch papers from Semantic Scholar
     try:
         papers = search_semantic_scholar(semantic_query, limit=20)
+        
     except Exception as e:
         print("Error fetching from semantic API:", e)
-        raise HTTPException(status_code=502, detail="External semantic API failed.")
+        raise HTTPException(status_code=502, detail="External semantic API failed.Please try again after few seconds")
 
     # 4️⃣ Log retrieved papers
     print(f"Retrieved {len(papers)} papers. Listing (title - url):")
@@ -59,4 +100,89 @@ async def search(query: str = Query(..., min_length=1)):
         print("-", p.get("title"), "-", p.get("url") or p.get("pdfUrl"))
     print("=== End search request ===\n")
 
-    return {"papers": papers}  # ✅ frontend expects `papers`
+
+    papers_top10 = rank_papers(query, papers, top_n=10)
+
+    return {"papers": papers_top10}
+     # ✅ frontend expects `papers`
+
+
+
+
+class Paper(BaseModel):
+    url: Optional[str] = None
+    abstract: Optional[str] = None
+    pdfURL:Optional[str]=None
+    title: Optional[str] = None
+
+class SummarizeRequest(BaseModel):
+    papers: List[Paper]
+
+
+@app.post("/summarize")
+async def summarize(req: SummarizeRequest):
+    """
+    Accepts a list of papers with `url` and/or `abstract`.
+    Summarizes using abstract if available, otherwise fetches content from URL.
+    """
+    results = {}
+
+    for paper in req.papers:
+        key = paper.url or paper.pdfURL or "abstract"
+
+        if paper.abstract:
+            try:
+                summary = summarize_with_gemini(paper.abstract)
+                results[key] = summary
+            except Exception as e:
+                results[key] = f"Error summarizing: {str(e)}"
+        elif paper.url:
+            try:
+                summary = summarize_url(paper.url)  # summarization included
+                results[key] = summary
+            except Exception as e:
+                results[key] = f"Error fetching/summarizing content: {str(e)}"
+        elif paper.pdfURL:
+            try:
+                summary = summarize_url(paper.pdfURL)
+                results[key] = summary
+            except Exception as e:
+                results[key] = f"Error fetching/summarizing content: {str(e)}"
+        else:
+            results[key] = "No content provided to summarize."
+
+    
+    return {"summaries": results}
+
+
+
+    
+class Feedback(BaseModel):
+    name: str
+    email: str
+    message: str
+
+@app.post("/feedback")
+async def send_feedback(data: Feedback):
+    try:
+        # Configure your SMTP (example: Gmail)
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        sender_email = "paperforge5@gmail.com"  # PaperForge mail
+        password = "wnnn rlsq desr tvdz"
+
+        msg = MIMEText(
+            f"Feedback from: {data.name} <{data.email}>\n\n{data.message}"
+        )
+        msg["Subject"] = "📩 New Feedback from PaperForge"
+        msg["From"] = sender_email
+        msg["To"] = sender_email  # send to self
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, password)
+            server.sendmail(sender_email, sender_email, msg.as_string())
+
+        return {"status": "success", "message": "Feedback sent!"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

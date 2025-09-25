@@ -44,6 +44,7 @@ def search_semantic_scholar(query: str, limit: int = 20) -> List[Dict]:
                 "url": item.get("url"),
                 "pdfUrl": pdfUrl,
                 "source": source,
-                "abstract": item.get("abstract") or ""
+                "abstract": item.get("abstract") or "",
+                "citationCount": item.get("citationCount", 0)
             })
     return results
