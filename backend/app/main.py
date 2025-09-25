@@ -36,24 +36,31 @@ async def search(query: str = Query(..., min_length=1)):
     try:
         terms = normalize_and_tokenize(query)
     except Exception as e:
-        print("Error during NLP processing:", e)
+        print("Error during NLP processing.. check your console or log errors for more:", e)
         raise HTTPException(status_code=500, detail="NLP processing failed.")
 
     print("Normalized terms (tokens):", terms)
     print("----")
 
-    # 2️⃣ Build semantic query string
     semantic_query = " ".join(terms) if terms else query
     print(f"Semantic query being sent to external API: {semantic_query}")
 
-    # 3️⃣ Fetch papers from Semantic Scholar
     try:
         papers = search_semantic_scholar(semantic_query, limit=20)
     except Exception as e:
         print("Error fetching from semantic API:", e)
         raise HTTPException(status_code=502, detail="External semantic API failed.")
-
-    # 4️⃣ Log retrieved papers
+    try:
+        papers = search_semantic_scholar(semantic_query, limit=20)
+    except Exception as e:
+        print("Error fetching from semantic API:", e)
+        raise HTTPException(status_code=502, detail="External semantic API failed.")
+    try:
+        papers = search_semantic_scholar(semantic_query, limit=20)
+    except Exception as e:
+        print("Error fetching from semantic API:", e)
+        raise HTTPException(status_code=502, detail="External semantic API failed.")
+    
     print(f"Retrieved {len(papers)} papers. Listing (title - url):")
     for p in papers:
         print("-", p.get("title"), "-", p.get("url") or p.get("pdfUrl"))
