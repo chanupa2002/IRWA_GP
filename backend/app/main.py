@@ -18,6 +18,7 @@ from slowapi.errors import RateLimitExceeded
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from fastapi import Request
+from .topic_classifier import classify_topic
 
 
 app = FastAPI(title="PaperForge Backend")
@@ -129,30 +130,54 @@ async def summarize(req: SummarizeRequest):
 
     for paper in req.papers:
         key = paper.url or paper.pdfURL or "abstract"
+        summary_text = None
 
+        # 1️⃣ Try summarization (keep using existing endpoints)
+        try:
+            if paper.abstract:
+                summary_text = summarize_with_gemini(paper.abstract)
+            elif paper.pdfURL:
+                summary_text = summarize_url(paper.pdfURL)
+            elif paper.url:
+                summary_text = summarize_url(paper.url)
+           
+        except Exception:
+            summary_text = None
+
+        # 2️⃣ Determine if summary is valid
+        def is_valid_summary(text: str) -> bool:
+            if not text or len(text.strip()) < 20:
+                return False
+            lowered = text.strip().lower()
+            invalid_starts = ["error", "unsupported", "no content","please provide the content"]
+            return not any(lowered.startswith(start) for start in invalid_starts)
+
+        text_for_classification = ""
         if paper.abstract:
-            try:
-                summary = summarize_with_gemini(paper.abstract)
-                results[key] = summary
-            except Exception as e:
-                results[key] = f"Error summarizing: {str(e)}"
-        elif paper.url:
-            try:
-                summary = summarize_url(paper.url)  # summarization included
-                results[key] = summary
-            except Exception as e:
-                results[key] = f"Error fetching/summarizing content: {str(e)}"
-        elif paper.pdfURL:
-            try:
-                summary = summarize_url(paper.pdfURL)
-                results[key] = summary
-            except Exception as e:
-                results[key] = f"Error fetching/summarizing content: {str(e)}"
-        else:
-            results[key] = "No content provided to summarize."
+            text_for_classification += paper.abstract + " "
+        if paper.title:
+            text_for_classification += paper.title
+       
 
-    
-    return {"summaries": results}
+        if is_valid_summary(summary_text):
+            text_for_classification = summary_text
+        else:
+            text_for_classification = paper.title or "Unknown"
+            summary_text = "Summary not available for this paper at the moment."
+
+        # 3️⃣ Classify topic
+        try:
+            topic = classify_topic(text_for_classification)
+        except Exception as e:
+            topic = f"Error classifying topic: {str(e)}"
+
+        # 4️⃣ Store results
+        results[key] = {
+            "summary": summary_text,
+            "topic": topic
+        }
+
+    return {"papers": results}
 
 
 
