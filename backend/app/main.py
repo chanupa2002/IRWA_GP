@@ -31,6 +31,7 @@ async def search(query: str = Query(..., min_length=1)):
     print("Raw query:")
     print(query)
     print("----")
+    print(query.count)
 
     # 1️⃣ Normalize & tokenize
     try:
@@ -44,6 +45,7 @@ async def search(query: str = Query(..., min_length=1)):
 
     semantic_query = " ".join(terms) if terms else query
     print(f"Semantic query being sent to external API: {semantic_query}")
+    print(semantic_query.count)
 
     try:
         papers = search_semantic_scholar(semantic_query, limit=20)
@@ -62,6 +64,7 @@ async def search(query: str = Query(..., min_length=1)):
         raise HTTPException(status_code=502, detail="External semantic API failed.")
     
     print(f"Retrieved {len(papers)} papers. Listing (title - url):")
+    print("ok")
     for p in papers:
         print("-", p.get("title"), "-", p.get("url") or p.get("pdfUrl"))
     print("=== End search request ===\n")

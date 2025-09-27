@@ -25,6 +25,7 @@ def search_semantic_scholar(query: str, limit: int = 20) -> List[Dict]:
         r = client.get(SEMANTIC_SCHOLAR_URL, params=params, headers=headers)
         r.raise_for_status()
         data = r.json()
+        print(data)
         # data expected to have 'data' list (per API)
         results = []
         for item in data.get("data", []):

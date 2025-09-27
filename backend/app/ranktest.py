@@ -44,6 +44,7 @@ def test_search_success(monkeypatch):
     assert isinstance(data["papers"], list)
     assert data["papers"][0]["title"] == "Artificial Intelligence Research"
 
+    print(data)
 
 def test_search_invalid(monkeypatch):
     """Test when normalize_and_tokenize raises an error"""
