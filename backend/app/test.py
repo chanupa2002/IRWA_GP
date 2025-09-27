@@ -53,6 +53,8 @@ def test_search_invalid(monkeypatch):
 
     monkeypatch.setattr("app.main.normalize_and_tokenize", mock_normalize_and_tokenize)
 
+    print(monkeypatch)
+
     response = client.get("/search?query=test")
     assert response.status_code == 500
     assert response.json()["detail"] == "NLP processing failed."
