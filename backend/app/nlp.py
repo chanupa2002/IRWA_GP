@@ -23,6 +23,7 @@ def normalize_and_tokenize(text, min_len=2, dedup=True):
     doc = nlp(text)
     terms = []
     for token in doc:
+        #Add
         # keep only alphabetic tokens, not punctuation, not whitespace, not stopwords
         if token.is_alpha and not token.is_stop:
             lemma = token.lemma_.lower().strip()
