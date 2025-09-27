@@ -5,7 +5,7 @@ from .nlp import normalize_and_tokenize
 from .semantic import search_semantic_scholar
 
 app = FastAPI(title="PaperForge Backend")
-# Allow
+
 # Allow frontend to call backend
 app.add_middleware(
     CORSMiddleware,
