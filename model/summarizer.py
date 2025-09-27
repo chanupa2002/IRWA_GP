@@ -4,7 +4,7 @@ def get_text_from_url(url):
     response = requests.get(url)
     content_type = response.headers.get('Content-Type', '')
 
-    # PDFS
+    # PDFSs
     if 'application/pdf' in content_type:
         import PyPDF2
         from io import BytesIO
