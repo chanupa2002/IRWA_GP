@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException,UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from .nlp import normalize_and_tokenize
@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from fastapi import Request
 from .topic_classifier import classify_topic
+from .gapAnalyzer import run_gap_analysis
+import os
 
 
 app = FastAPI(title="PaperForge Backend")
@@ -211,3 +213,38 @@ async def send_feedback(data: Feedback):
         return {"status": "success", "message": "Feedback sent!"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+
+@app.post("/gap-analysis")
+async def gap_analysis(files: List[UploadFile] = File(...)):
+    if len(files) < 2:
+        raise HTTPException(status_code=400, detail="Please upload at least two research papers.")
+
+    file_paths = []
+    try:
+        # Save uploaded files temporarily
+        for file in files:
+            temp_path = f"temp_{file.filename}"
+            with open(temp_path, "wb") as f:
+                f.write(await file.read())
+            file_paths.append(temp_path)
+
+        # Run the pipeline
+        result = run_gap_analysis(file_paths)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gap analysis failed: {str(e)}")
+
+    finally:
+        # Cleanup temp files
+        for path in file_paths:
+            if os.path.exists(path):
+                os.remove(path)
+
+    # Ensure all keys exist so frontend doesn't crash
+    for key in ["common_areas", "unique_contributions", "gaps", "future_research_directions"]:
+        if key not in result or result[key] is None:
+            result[key] = [] if key != "unique_contributions" else {}
+
+    return result
