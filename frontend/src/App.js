@@ -6,6 +6,11 @@ import ResultsGrid from "./components/ResultsGrid";
 import Summarizer from "./components/Summarizer"; // Import new component
 import { searchPapers } from "./api";
 import FeedbackForm from "./components/FeedbackForm";
+import GapAnalysis from "./components/gapAnalysis";
+import TopicFinder from "./components/topicFinder";
+import PdfSummaryUploader from "./components/PdfSummaryUploader";
+import StickyFeedback from "./components/StickyFeedback";
+import Footer from "./components/Footer";
 
 export default function App() {
   const [loading, setLoading] = useState(false);
@@ -68,6 +73,24 @@ export default function App() {
           >
             Summarization & Classification
           </button>
+          <button
+            className={activeTab === "gapAnalysis" ? "tab active" : "tab"}
+            onClick={() => setActiveTab("gapAnalysis")}
+          >
+            Gap Analysis
+          </button>
+          <button
+            className={activeTab === "topicFinder" ? "tab active" : "tab"}
+            onClick={() => setActiveTab("topicFinder")}
+          >
+            Topic Recommendation
+          </button>
+          <button
+            className={activeTab === "uploaderSummary" ? "tab active" : "tab"}
+            onClick={() => setActiveTab("uploaderSummary")}
+          >
+            Uploader Summary
+          </button>
         </div>
 
         {activeTab === "search" && (
@@ -99,21 +122,22 @@ export default function App() {
                 No results. Try a broader query.
               </div>
             )}
+            <div className="footerNote">
+              Tip: you can paste a long research prompt or multiple keywords.
+            </div>
           </>
         )}
 
         {activeTab === "summarizer" && <Summarizer results={results} />}
 
-        <div className="footerNote">
-          Tip: you can paste a long research prompt or multiple keywords.
-        </div>
+        {activeTab === "gapAnalysis" && <GapAnalysis />}
+        {activeTab == "topicFinder" && <TopicFinder />}
+        {activeTab == "uploaderSummary" && <PdfSummaryUploader />}
       </main>
 
-      <footer className="footer">
-        <div className="footer-content">
-          <FeedbackForm />
-        </div>
-      </footer>
+      <StickyFeedback />
+
+      <Footer />
     </>
   );
 }

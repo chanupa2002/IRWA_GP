@@ -11,16 +11,24 @@ import smtplib
 from email.mime.text import MIMEText
 import re
 from fastapi import Depends
-
+import shutil
+from pathlib import Path
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from fastapi import Request
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+
+
 from .topic_classifier import classify_topic
 from .gapAnalyzer import run_gap_analysis
 import os
+from .topicFinder import generate_research_topics
+from .uploader_Summerization import summarize_pdf
 
 
 app = FastAPI(title="PaperForge Backend")
@@ -139,9 +147,9 @@ async def summarize(req: SummarizeRequest):
             if paper.abstract:
                 summary_text = summarize_with_gemini(paper.abstract)
             elif paper.pdfURL:
-                summary_text = summarize_url(paper.pdfURL)
+                summary_text = await summarize_url(paper.pdfURL)
             elif paper.url:
-                summary_text = summarize_url(paper.url)
+                summary_text =await summarize_url(paper.url)
            
         except Exception:
             summary_text = None
@@ -161,12 +169,15 @@ async def summarize(req: SummarizeRequest):
             text_for_classification += paper.title
        
 
-        if is_valid_summary(summary_text):
-            text_for_classification = summary_text
-        else:
-            text_for_classification = paper.title or "Unknown"
-            summary_text = "Summary not available for this paper at the moment."
-
+        if not  is_valid_summary(summary_text):
+            # fallback if summary invalid
+            summary_text = "Summary not available: the paper is behind a paywall or inaccessible."
+            if paper.abstract:
+                text_for_classification = paper.abstract + " " + (paper.title or "")
+            elif paper.title:
+                text_for_classification = paper.title
+            else:
+                text_for_classification = "Text unavailable"
         # 3️⃣ Classify topic
         try:
             topic = classify_topic(text_for_classification)
@@ -188,10 +199,35 @@ class Feedback(BaseModel):
     name: str
     email: str
     message: str
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+def classify_feedback(message: str) -> str:
+    """
+    Send the message to Gemini and return the classification.
+    Categories: Good Impression, Bad Impression, Suggestion, Complaint, Neutral
+    """
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    prompt = f"""
+    Classify the following feedback into one of these categories:
+    - Good Impression
+    - Bad Impression
+    - Suggestion
+    - Complaint
+    - Neutral
+
+    Feedback: "{message}"
+
+    Just return the category name only.
+    """
+
+    response = model.generate_content(prompt)
+    return response.text.strip()
 
 @app.post("/feedback")
 async def send_feedback(data: Feedback):
     try:
+        category = classify_feedback(data.message)
         # Configure your SMTP (example: Gmail)
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
@@ -201,7 +237,7 @@ async def send_feedback(data: Feedback):
         msg = MIMEText(
             f"Feedback from: {data.name} <{data.email}>\n\n{data.message}"
         )
-        msg["Subject"] = "📩 New Feedback from PaperForge"
+        msg["Subject"] = f"📩 {category} Feedback from PaperForge"
         msg["From"] = sender_email
         msg["To"] = sender_email  # send to self
 
@@ -248,3 +284,76 @@ async def gap_analysis(files: List[UploadFile] = File(...)):
             result[key] = [] if key != "unique_contributions" else {}
 
     return result
+
+
+
+class TopicRequest(BaseModel):
+    paragraph: str
+
+@app.post("/generate-topics")
+async def generate_topics(req: TopicRequest):
+    """
+    Accepts a paragraph of text and returns top 10 research topics.
+    """
+    paragraph = req.paragraph.strip()
+    if not paragraph:
+        raise HTTPException(status_code=400, detail="Input paragraph is empty.")
+
+    try:
+        topics = generate_research_topics(paragraph)
+        return {"topics": topics}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Topic generation failed: {str(e)}")
+    
+
+
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+@app.post("/summarize-pdf/")
+async def summarize_pdf_endpoint(file: UploadFile = File(...)):
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    file_path = UPLOAD_DIR / file.filename
+    try:
+        # Save uploaded PDF
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Run your summarization pipeline
+        summary = summarize_pdf(str(file_path))
+        return {"filename": file.filename, "summary": summary}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error summarizing PDF: {e}")
+
+    finally:
+        # Optionally remove uploaded file after processing
+        if file_path.exists():
+            file_path.unlink()
+
+
+
+
+
+
+class TopicClassificationRequest(BaseModel):
+    summary: str
+
+@app.post("/topicClassifier-pdf/")
+async def topic_classifier_pdf(req: TopicClassificationRequest):
+    """
+    Accepts a summarized text and classifies its topic using the same topic classifier.
+    Returns JSON: { "topic": "Predicted topic name" }
+    """
+    try:
+        summary_text = req.summary.strip()
+        if not summary_text:
+            raise HTTPException(status_code=400, detail="Summary text is empty.")
+
+        topic = classify_topic(summary_text)
+        return {"topic": topic}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error classifying topic: {str(e)}")

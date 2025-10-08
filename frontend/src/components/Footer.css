@@ -1,0 +1,25 @@
+.footer {
+  background-color: #1f1f1f; /* Dark modern background */
+  color: #fff;
+  padding: 2rem 1rem;
+  margin-top: 4.5rem;
+  border-top: 1px solid #333;
+  margin-bottom: 0;
+}
+
+.footer-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.footer p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.footer-tagline {
+  color: #aaa;
+  font-size: 13px;
+  margin-top: 4px;
+}

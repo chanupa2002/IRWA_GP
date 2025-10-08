@@ -1,4 +1,6 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import "./GapAnalysis.css";
 
 export default function GapAnalysis() {
   const [files, setFiles] = useState([]);
@@ -24,7 +26,7 @@ export default function GapAnalysis() {
 
     try {
       const formData = new FormData();
-      files.forEach(file => formData.append("files", file));
+      files.forEach((file) => formData.append("files", file));
 
       const response = await fetch("http://localhost:8000/gap-analysis", {
         method: "POST",
@@ -41,35 +43,66 @@ export default function GapAnalysis() {
     }
   };
 
+  const handleClear = () => {
+    setFiles([]);
+    setAnalysis(null);
+    setError("");
+  };
+
   return (
     <div className="gap-analysis">
-      <h2>Gap Analysis</h2>
-      <input type="file" multiple accept="application/pdf" onChange={handleFileChange} />
-      <button onClick={handleSubmit} disabled={loading}>Analyze Gaps</button>
+      <h2>🧩 Research Gap Analysis</h2>
 
-      {loading && <p style={{ color: "blue" }}>🔄 Analyzing papers, please wait...</p>}
-      {error && <p style={{ color: "red" }}>❌ {error}</p>}
+      <div className="upload-area">
+        <input
+          type="file"
+          multiple
+          accept="application/pdf"
+          onChange={handleFileChange}
+        />
+        <div className="buttons">
+          <button onClick={handleSubmit} disabled={loading}>
+            {loading ? "Analyzing..." : "Analyze Gaps"}
+          </button>
+          <button onClick={handleClear} className="clear-btn">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {loading && <p className="loading">🔄 Analyzing papers, please wait...</p>}
+      {error && <p className="error">❌ {error}</p>}
 
       {analysis && (
-        <div>
-          <h3>Common Areas:</h3>
-          <ul>{analysis.common_areas.map((item, i) => <li key={i}>{item}</li>)}</ul>
+        <div className="analysis-results">
+          <section>
+            <h3>🔹 Common Areas</h3>
+            <ReactMarkdown>{analysis.common_areas.join("\n")}</ReactMarkdown>
+          </section>
 
-          <h3>Unique Contributions:</h3>
-          {Object.keys(analysis.unique_contributions).map((paper, i) => (
-            <div key={i}>
-              <h4>{paper}</h4>
-              <ul>
-                {analysis.unique_contributions[paper].map((point, j) => <li key={j}>{point}</li>)}
-              </ul>
-            </div>
-          ))}
+          <section>
+            <h3>🧠 Unique Contributions</h3>
+            {Object.keys(analysis.unique_contributions).map((paper, i) => (
+              <div key={i} className="paper-section">
+                <h4>{paper}</h4>
+                <ReactMarkdown>
+                  {analysis.unique_contributions[paper].join("\n")}
+                </ReactMarkdown>
+              </div>
+            ))}
+          </section>
 
-          <h3>Gaps Not Addressed:</h3>
-          <ul>{analysis.gaps.map((gap, i) => <li key={i}>{gap}</li>)}</ul>
+          <section>
+            <h3>🚧 Gaps Not Addressed</h3>
+            <ReactMarkdown>{analysis.gaps.join("\n")}</ReactMarkdown>
+          </section>
 
-          <h3>Future Research Directions:</h3>
-          <ul>{analysis.future_research_directions.map((dir, i) => <li key={i}>{dir}</li>)}</ul>
+          <section>
+            <h3>🚀 Future Research Directions</h3>
+            <ReactMarkdown>
+              {analysis.future_research_directions.join("\n")}
+            </ReactMarkdown>
+          </section>
         </div>
       )}
     </div>
