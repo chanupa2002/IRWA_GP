@@ -1,0 +1,138 @@
+.pdf-uploader {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  font-family: 'Inter', sans-serif;
+  transition: transform 0.2s;
+   margin-bottom: 100px;
+}
+
+.pdf-uploader:hover {
+  transform: translateY(-2px);
+}
+
+.pdf-uploader h2 {
+  text-align: center;
+  color: #1e3a8a;
+  margin-bottom: 25px;
+  font-weight: 700;
+ 
+}
+
+/* Upload section */
+.upload-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  
+}
+
+/* File input */
+.pdf-uploader input[type="file"] {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.pdf-uploader input[type="file"]:hover {
+  border-color: #4f46e5;
+}
+
+/* Primary button */
+.pdf-uploader button {
+  background-color: #4f46e5;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.25s, transform 0.1s;
+}
+
+.pdf-uploader button:hover {
+  background-color: #4338ca;
+  transform: scale(1.02);
+}
+
+.pdf-uploader button:disabled {
+  background-color: #a5b4fc;
+  cursor: not-allowed;
+}
+
+/* Clear button */
+.clear-btn {
+  background-color: #f472b6;
+}
+
+.clear-btn:hover {
+  background-color: #ec4899;
+}
+
+/* File info box */
+.file-info {
+  margin-top: 20px;
+  padding: 12px 16px;
+  background-color: #f3f4f6;
+  border-radius: 8px;
+  border-left: 4px solid #4f46e5;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+/* Summary box */
+.summary-box {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background-color: #f9fafb;
+  color: #1f2937;
+  line-height: 1.6;
+  white-space: pre-line;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+}
+
+.summary-box h3 {
+  color: #1e3a8a;
+  margin-bottom: 10px;
+}
+
+/* Classify button */
+.classify-btn {
+  margin-top: 10px;
+  background-color: #10b981;
+}
+
+.classify-btn:hover {
+  background-color: #059669;
+}
+
+/* Topic box */
+.topic-box {
+  margin-top: 15px;
+  background-color: #eef2ff;
+  border-left: 4px solid #4f46e5;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.topic-box h4 {
+  margin: 0 0 5px 0;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.topic-box p {
+  margin: 0;
+  color: #1f2937;
+}
