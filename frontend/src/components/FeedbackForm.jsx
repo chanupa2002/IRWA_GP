@@ -33,7 +33,7 @@ export default function FeedbackForm() {
 
   return (
     <div className="feedback-card">
-      <h2>Send us your Feedback</h2>
+     
       <form onSubmit={handleSubmit}>
         <input
           type="text"

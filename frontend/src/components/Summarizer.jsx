@@ -1,6 +1,6 @@
 import { useState } from "react";
 import ResultCard from "./ResultCard";
-import "./Summarizer.css"; // custom styles
+import "./Summarizer.css";
 
 export default function Summarizer({ results }) {
   const [selectedPaper, setSelectedPaper] = useState(null);
@@ -59,7 +59,7 @@ export default function Summarizer({ results }) {
     <div className="summarizer">
       <h2>Summarization & Classification</h2>
 
-      {results.length === 0 && <p>No papers available for summarization.</p>}
+      {results.length === 0 && <p className="no-results">No papers available for summarization.</p>}
 
       {results.length > 0 && (
         <>
@@ -83,21 +83,21 @@ export default function Summarizer({ results }) {
           </div>
 
           <button
-            className="btn primary summarize-btn"
+            className="summarize-btn"
             onClick={handleSummarize}
             disabled={!selectedPaper || loading}
           >
             {loading ? "Summarizing…" : "Summarize"}
           </button>
 
-          {error && <div className="error">{error}</div>}
+          {error && <div className="error">❌ {error}</div>}
 
           {summary && (
-            <div className="summary">
-              <h3>Summary:</h3>
+            <div className="summary-box">
+              <h3>📘 Summary</h3>
               <p>{summary}</p>
-              <h4>Topic:</h4>
-              <p>{topic}</p>
+              <h4>🧩 Topic Classification</h4>
+              <p className="topic">{topic}</p>
             </div>
           )}
         </>
