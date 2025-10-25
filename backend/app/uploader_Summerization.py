@@ -9,11 +9,14 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from dotenv import load_dotenv
+from pathlib import Path
+import shutil
 
 # --- Setup NLTK ---
 nltk.download("punkt", quiet=True)
 nltk.download("stopwords", quiet=True)
 nltk.download("wordnet", quiet=True)
+
 
 # --- Load API Key ---
 load_dotenv()
@@ -27,7 +30,7 @@ model = genai.GenerativeModel(model_name="gemini-2.5-flash")
 
 # Step 1: Extract text from PDF
 def extract_pdf_text(pdf_path: str) -> str:
-    """Extract text from a text-based PDF using PyMuPDF (no OCR)."""
+    """Extract text from a text-based PDF using PyMuPDF (n3o OCR)."""
     text_chunks = []
     with fitz.open(pdf_path) as doc:
         for page in doc:
@@ -47,7 +50,7 @@ def preprocess_text(text: str) -> list[str]:
 
     stemmer = PorterStemmer()
     lemmatizer = WordNetLemmatizer()
-    terms = [lemmatizer.lemmatize(stemmer.stem(t)) for t in tokens]
+    terms = [lemmatizer.lemmatize(t) for t in tokens] 
     return terms
 
 
@@ -71,7 +74,10 @@ def summarize_pdf_terms(terms: list[str]) -> str:
         f"Terms: {', '.join(terms)}"
     )
     response = model.generate_content(prompt)
-    return response.text
+    clean_text = re.sub(r'\*+', '', response.text)
+    
+    return clean_text
+    
 
 
 def summarize_pdf(pdf_path: str) -> str:
