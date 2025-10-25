@@ -7,9 +7,7 @@ import re
 
 load_dotenv()
 
-# -----------------------------
-# STEP 1: Extract text from PDF
-# -----------------------------
+
 def extract_text_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
     text = ""
@@ -17,9 +15,6 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text("text")
     return text
 
-# -----------------------------
-# STEP 2: Extract relevant sections
-# -----------------------------
 def extract_relevant_sections(text):
     sections = {}
     lowered = text.lower()
@@ -40,24 +35,20 @@ def extract_relevant_sections(text):
     sections["conclusion"] = get_section("conclusion", ["references", "acknowledgment", "acknowledgement"])
     return sections
 
-# -----------------------------
-# STEP 3: Summarize with HuggingFace
-# -----------------------------
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+
+summarizer = pipeline("summarization", model="facebook/bart-base")
 
 def summarize_text(text, max_len=100):
     if not text.strip():
         return ""
-    chunks = [text[i:i+1000] for i in range(0, len(text), 1000)]
+    chunks = [text[i:i+1000] for i in range(0, len(text), 5000)]
     summaries = []
     for chunk in chunks:
         summary = summarizer(chunk, max_length=max_len, min_length=50, do_sample=False)[0]['summary_text']
         summaries.append(summary)
     return " ".join(summaries)
 
-# -----------------------------
-# STEP 4: Analyze gaps with Gemini
-# -----------------------------
+
 def analyze_gaps(paper_summaries):
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     model = genai.GenerativeModel("gemini-2.5-flash")
@@ -79,9 +70,7 @@ Provide a comparative gap analysis highlighting:
     response = model.generate_content(prompt)
     return response.text
 
-# -----------------------------
-# STEP 5: Restructure Gemini output
-# -----------------------------
+
 def restructure_gap_analysis(raw_output):
     result = {
         "common_areas": [],
@@ -129,9 +118,7 @@ def restructure_gap_analysis(raw_output):
 
     return result
 
-# -----------------------------
-# STEP 6: Main pipeline
-# -----------------------------
+
 def run_gap_analysis(pdf_paths):
     summaries = []
     for path in pdf_paths:
